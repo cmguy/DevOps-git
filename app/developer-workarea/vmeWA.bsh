@@ -1,0 +1,529 @@
+#!/bin/bash
+##################################################################################
+# DevWA.bsh
+#      - Script to setup change contributor or devlead coordinator workstation
+#        workstation environment.
+#
+# Written by Andy Wallace 2020/03/12; last updated 2020/03/31
+#
+# Release v0.1.beta
+#
+##################################################################################
+# Summary
+##################################################################################
+#
+# This script is intended for all DevOps team change contributors. It helps
+# establish a "Change Cadence" for managing All change by the DevOps team.
+#
+# Change considered includes:
+#   - Code for functionality
+#   - All configuration changes
+#   - All testing
+#   - All Dependencies
+#   - All Continuous Integration (CI) procedures and process
+#   - All Continuous Deployment (CD) procedures and process
+#   - All Release Deployment procedures and process
+#
+# This script sets up a workarea on a workstation based on a git repository.
+# The workstation repository is created from a Github forked repository.
+#
+# The main repository the forked repository is copied from contains the latest
+# approved baselines and release sets. These baselines and release sets are
+# validated and approved with DevOps Continuous Integration (CI) and Continuous
+# Deployment (CD) coordination.
+#
+# This coordination consists of:
+#   A. Consistent Release reporting and tagging
+#        References:
+#          - https://github.com/cmguy/DevOps-git/releases
+#          - https://github.com/cmguy/CM-System-Site/releases
+#          - https://github.com/cmguy/CM-System-Site/tree/master/deploy
+#   B. Workstation repositories that are instantiated often
+#   C. Continuous Integration (CI):
+#      1. All change is developed on workstation repositories feature branches
+#      2. These feature branches are committed on the workstation repository often
+#          with small "change sets"
+#      3. For each feature branch commit:
+#           a. Each approved baseline and release set is pulled from the
+#              main repository to the workstation repository:
+#              i.  Merged into the feature branch
+#              ii. Fully tested with all know testing
+#      4. When the feature branch is fully tested it is pushed to the
+#         forked repo
+#   D. Continuous Deployment (CD):
+#      1. When the Change Contributor is satisfied the feature branch is
+#         "Production Release Ready", the feature branch is pushed to the
+#         Github forked repository.
+#      2. When the DevOps team is ready for the Change Contributor's feature branch:
+#           a. The Change Contributor does a "Pull Request" for the feature branch
+#           b. The DevOps team leadership does a review of the changes
+#           c. The DevOps teams executes the latest CI/CD procedures and process
+#           d. Feature branches that pass CI/CD are merged to baselines and
+#               release sets in the main repository per current release schedules.
+#        
+# New change requests may be added at any time during CI and CD process as
+# highlighted above. This enhances DevOps team collaboration internally and with
+# the DevOps team customers.
+#
+# Past and current release environment anomalies are addressed to enhance the CI
+# and CD process. This promotes operational stability. Oprational stability 
+# contributes to more accurate and realistic DevOps team change estimates and
+# scheduling.
+#
+# Each contributor manages and maintains their change sets in forked repository
+# feature branches separately. This gives DevOps leadership more merging and
+# combining possibilities for unanticipated changing of release sets. Once
+# a change set becomes a permanent addition to the primary baseline the 
+# change contributor can removed the feature branch and forked repository.
+#
+##################################################################################
+# General Approach
+##################################################################################
+#   A. Configure DevWA.bsh in ~/bin
+#   B. Designed to support the following "Change" workflow for CI/CD:
+#      1. Establish workstation repo working environment
+#           - Based on Github repo
+#           - clone from fork of Github repo
+#           - read from Github main repo for latest approved changes
+#      3. Make changes in workstation repo feature branch
+#      4. Test with existing baseline and all anticipated change for repo
+#      5. Promote pull request of feature branch from forked repo
+#      6. Save feature branch in forked repo until it becomes part of the baseline
+#   C. Also supports the creation of workstation repo for DevLead working
+#      on "pull requests". These are managed with shared branches that cover
+#      all release sets past and planned. Shared branches are merged into
+#      developer feature branches for CI/CD testing - See B.3 above.
+#         NOTES:
+#            1. Semantic versioning is used for release management. References:
+#                -  https://semver.org/
+#                -  https://www.geeksforgeeks.org/introduction-semantic-versioning/
+#            2. Use same VM(s) to mimic production environment as established by
+#               developers.
+#
+#  Reference DevOps Process at following link for details:
+#     http://emmutl-ch2-1p.sys.comcast.net/teamTools/emm-devops-process.html
+#
+#   D. ***For VM Enhanced Development Workstation***
+#       Establish a Virtual Machine(s) (VMs) that mimics production environment
+#       this repo's executables are delivered to.
+#           - runs in your workstation memory
+#           - Enhances CI/CD testing and automation
+#
+##################################################################################
+# Assumptions:
+#  - GitFork workflow is assumed as defined in the DevOps Process document.
+#  - This script is always executed outside of an existing workstation repo
+#    directory.
+#
+#############################################################################
+# Dependencies:  (This list maintained to support Win 10 and Mac workstations)
+#    A. Workstation related assumptions:
+#       1.  github ssh alias defined in ~/.ssh
+#       2.  Following defined in ~/.bash_profile
+#             $ source /etc/profile
+#             $ export PATH=$PATH:$HOME/bin
+#             Reference cmguy/DevOps-git/app/developer-workarea/.bash_profile
+#             for other examples.
+#       3.  Configure following script variables for your environment:
+#               $TargetDir      # workstation repo workarea directory
+#               $GithubUserID   # Forked repo userid
+#       4.  $TargetDIR directory exists on your workstation ~/ directory
+#       5.  $TargetRepo workarea directory maintained in ~/$TargetDir
+#       6.  $BackupWA workarea directory maintained in ~/$TargetDir
+#       7.  A copy of this script in ~/bin/ with execute permissions
+#             $ chmod 755 ~/bin/DevWA.bsh
+#       8.  ***For Virtual Machine Enhanced workstation,***
+#           $TargetDir/$TargetRepo/deploy directory exists on
+#           $Basis branch
+#    B. github related assumptions:
+#       1.  github system with $TargetOrg/$TargetRepo
+#       2.  $TargetRepo is cloned based on $GithubUserID Fork of
+#             $TargetOrg/$TargetRepo
+#       3.  Targeted forked repo is recent or maintained to be recent:
+#            - delete old fork via Github forked repo settings-Danger Zone
+#            - Fork new repo via Github repo User Interface
+#       4.  All scripts in $TargetRepo have execute permissions set in
+#           Github repo.
+#            a. To set execute permissions
+#                 $ git add --chmod=+x path/to/file
+#            b. To view git permission settings for give repo directory:
+#                 $ git ls-files --stage
+#            c. To enable git bare repo update
+#                 $ git config core.filemode true
+#                (Also check .git/config core file mode setting)
+#       5. $TargetRepo/develop and $TargetRepo/master branches exists
+#       6. For Virtual Machine Enhanced development environment:
+#           a. $TargetRepo/deploy exists
+#           b. $TargetRepo/deploy/vm-system-service.bsh exists
+#              including dependencies.
+#
+#############################################################################
+# Workstation installed DevWA.bsh Execution Notes:
+#
+#  1. For each execution of this script:
+#     a. Assumes a $BackupWA exists in ~/$TargetDir and removes it.
+#     b. Assumes the $TargetRepo directory exists in ~/$TargetDir and
+#        moves it to the $BackupWA directory.
+#     c. Creates a temporary ~/$TargetDir/log directory
+#     d. Creates a .ForkedWA.log file in the $Basis branch top directory
+#        or deploy directory if it exists.
+#         - Uses ~/$TargetDir/$TargetRepo/deploy for deploy directory if
+#           it exists.
+#         - Assumes *.log entry in repo .gitignore file
+#     e. Establishes a feature branch name for change development
+#        effort based on the following:
+#         - $Basis and $Issue
+#           NOTES:
+#               1. $Issue is intended for the developer change ticket number.
+#               2. If this script is executed with "dl" $Basis is
+#                  assumed to be the developer's userid in github.
+#     f. If you wish to remain in the $TargetRepo after the DevWA.bsh run,
+#        execute as follows:
+#              . vmeWA.bsh github-acct Repo mr|fr|dl Basis Issue
+#        Above example depends on:
+#            1. ~/.bash_profile configured as recommended
+#            2. DevWA.bsh being installed in ~/bin and ~/bin
+#               in the workstation $PATH variable.
+#  2. Variables $Basis and #Issue are used to name the feature branch
+#  3. All variables are either:
+#     a. Configured in following section or
+#     b. Loaded with script arguments
+#     This approach is designed to keep the need for arguments to
+#     a minimum while providing flexibility for processing various
+#     github repositories.
+#  4. If you get the following lines during execution, verify you have forked
+#     the repo on github:
+#            Cloning into 'DevOps-git'...
+#            ERROR: Repository not found.
+#            fatal: Could not read from remote repository.
+#  5. During an execute run, BE SURE TO READ THE OUTPUT.
+#     If you get any of the following, something is wrong:
+#       a. "Permission denied"
+#       b. "fatal:"
+#  6. Do not run this script when local to the $TargetDir or any sub-directories
+#     of the $TargetDir. Designed to run from your ~/ directory.
+#
+#  ***Following applies If running Virtual Machine Enhanced workarea***
+#  7. This script should not be run if there is an active VM Enhanced
+#      workarea using the same ports. This will cause an execution error.
+#      Be sure to run 'vagrant destroy' and remove the associated workarea
+#      before running this script again. This script assumes this has been done.
+#
+##################################################################################
+#
+################################################################################
+# Script configuration variables
+#
+#  These have be setup and tested on Win 10 and Mac workstations.
+#
+#  You'll need to verify and/or adjust them for your environment, preferences,
+#  and Github Repo.
+#     ***NOTE***: The usage of $NumberOfArgs for argument processing
+#
+#  It is recommended that you copy this script to your ~/bin directory 
+#  on your workstation and run it from there.
+#
+#  There is reliance on your ~/.bash_profile settings by this script.
+#  Reference cmguy/DevOps-git/app/developer-workarea/.bash_profile for a template
+#  reference.
+################################################################################
+ThisScript="vmeWA.bsh"           # Used in log and response messaging
+TargetDir="vme-repos"            # repo workarea directory
+GithubUserID="cmguy"             # Forked repo userid
+MainRepo="main"                  # Name of the git workstation repo remote for
+                                 #  the Github org/userid repo forked from.
+sshConfigref="github"            # defined in ~/.ssh/config
+#################################
+# Following commented out.
+# Currently processed as
+# arguments.
+#################################
+#TargetOrg="cmguy"               # Github organization 
+#TargetRepo="CM-System-Site"     # Github organization repo
+#RepoFlag="mr"                   # main/forked repo flag-feature branch basis
+#Basis="develop"                 # Branch feature branch is based on
+#Issue=""                        # Issue Developer is working
+####################################################
+#NumberOfArgs=5  # Number of arguments to process
+#  NOTE: Must be at least 1 argument to process
+NumberOfArgs=5   # Number of arguments to process
+####################################################
+
+################################################################################
+# Process script arguments
+################################################################################
+if [ "$#" -eq "0" ]; then echo ""
+      echo "Invalid argument set. For help execute " $ThisScript " -h"
+      echo ""
+      echo "ERROR - No argument supplied."
+      exit 1
+fi
+
+if [ "$1" == "-h" ]; then
+   echo ""
+   echo "$ThisScript -h|[ github Org/userid Repo mr|fr|dl basis Issue ]"
+   echo ""
+   echo "   -h          -> Prints this help text."
+   echo ""
+   echo "   github-Org  -> Github Organization/userid where Repository resides."
+   echo ""
+   echo "   Repo        -> Repository name contained under Github-Org/userid."
+   echo ""
+   echo "   mr|fr|dl    -> Feature branch repo basis flag is one of: "
+   echo "                   mr - Main Repo "
+   echo "                   fr - Forked Repo "
+   echo "                        NOTE: For both mr|fr options, the feature"
+   echo "                               branch will push to 'origin' remote."
+   echo "                   dl - DevLead Repo"
+   echo "                        NOTES:"
+   echo "                        1. No Feature branch created"
+   echo "                        2. A workstation repo remote to the developer"
+   echo "                            Github forked repo will be create automatically"
+   echo "                            per Basis argument value."
+   echo "                        3. Assumes you have write access to"
+   echo "                            primary, non-forked repo."
+   echo ""
+   echo "   Basis       -> This will be the shared branch your coding effort"
+   echo "                  is based on. The expected values include develop,"
+   echo "                  master, or any team shared release branch."
+   echo ""
+   echo "                  If previous argument is dl, this will be the"
+   echo "                  developer's Github userid."
+   echo ""
+   echo "                  Reference the available branches for this repo"
+   echo "                  via the Github User Interface."
+   echo ""
+   echo "   Issue       -> Change Record number for Github Repo changes."
+   echo ""
+   echo "Notes:"
+   echo "  1. '.' is not a valid argument character."
+   echo "  2. Script variables can be uncommented and loaded to"
+   echo "     avoid arguments."
+   echo "       - See 'Argument Variables' section in script for details"
+   echo "  3. Use spaces to separate all argument values."
+   echo ""
+   exit 1
+fi
+
+#####################################################
+# At this point at least 1 argument that is not -h
+#####################################################
+
+if [ "$#" -ge "1" ]; then
+   echo "`date +%c` Validate $ThisScript arguments ..."
+   if [ "$#" -gt "$NumberOfArgs" ]; then
+      echo ""
+      echo "Invalid argument set. For help execute " $ThisScript " -h"
+      echo ""
+      echo "ERROR - Too many arguments supplied."
+      echo ""
+      exit 1
+   fi
+   if [ "$#" -lt "$NumberOfArgs" ]; then
+      echo ""
+      echo "Invalid argument set. For help execute " $ThisScript " -h"
+      echo ""
+      echo "ERROR - Not enough arguments supplied."
+      echo ""
+      exit 1
+   fi
+fi
+
+######################################################
+# For the default configuration, there are 5 arguments
+######################################################
+
+for i in "$@"; do
+
+  if [[ $i =~ "." ]]; then
+     echo ""
+     echo "Invalid argument value. For help execute " $ThisScript " -h"
+     echo ""
+     echo "ERROR - Invalid argument(s) supplied."
+     echo ""
+     echo "'.' is not a valid argument character."
+     exit 1
+  fi
+
+  # Set variable based on arguments & variable settings
+  if [ -z "$TargetOrg" ]; then
+     TargetOrg=$i
+     continue
+  fi
+  if [ -z "$TargetRepo" ]; then
+     TargetRepo=$i
+     continue
+  fi
+  if [ -z "$RepoFlag" ]; then
+     RepoFlag=$i
+     continue
+  fi
+  if [ -z "$Basis" ]; then
+     Basis=$i
+     continue
+  fi
+  if [ -z "$Issue" ]; then
+     Issue=$i
+     continue
+  fi
+
+done
+
+if [ "$RepoFlag" != "mr" ] && [ "$RepoFlag" != "fr" ] && [ "$RepoFlag" != "dl" ]; then
+   echo "ERROR - Invalid RepoFlag argument supplied."
+   echo "  Must be one of \"mr\", \"fr\" or \"dl\"."
+   echo "For help execute " $ThisScript " -h"
+   exit 1
+fi
+
+if [ "$RepoFlag" == "dl" ]; then
+   DevUserID=$Basis
+fi
+BackupWA="Backup-"
+BackupWA+=$TargetRepo
+
+
+################################################################################
+# Create development repo workarea
+################################################################################
+mkdir ~/$TargetDir/log
+echo "`date +%c` $TargetRepo - prepare $TargetDir directory ..." 2>&1 > ~/$TargetDir/log/.ForkedWA.log
+
+# echo Arg/Variable values to run log
+echo "*******************************************" >> ~/$TargetDir/log/.ForkedWA.log
+echo "*** Script Argument Variable run Values ***" >> ~/$TargetDir/log/.ForkedWA.log
+echo "*******************************************" >> ~/$TargetDir/log/.ForkedWA.log
+echo "Github-Org - \"$TargetOrg\" " 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+echo "TargetRepo - \"$TargetRepo\" " 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+echo "RepoFlag -   \"$RepoFlag\" " 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+echo "Basis -      \"$Basis\" " 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+echo "Issue No. -  \"$Issue\" " 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+echo "*******************************************" >> ~/$TargetDir/log/.ForkedWA.log
+
+echo "Change directory to $TargetDir ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+cd ~/$TargetDir 2>&1
+echo "Remove $BackupWA directory ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+rm -fr $BackupWA 2>&1
+echo "Move $TargetRepo to $BackupWA directory ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+mv $TargetRepo $BackupWA
+echo "$TargetDir directory ready for git clone." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+
+if [ "$RepoFlag" != "dl" ]; then
+   git clone $sshConfigref:$GithubUserID/$TargetRepo
+   echo "Change directory to $TargetRepo ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+   cd $TargetRepo
+   ######################################################
+   #  -  Build feature branch name string
+   ######################################################
+   fbranchname=$Basis
+   fbranchname+="_$Issue"
+else
+   git clone $sshConfigref:$TargetOrg/$TargetRepo
+   echo "Change directory to $TargetRepo ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+   cd $TargetRepo
+   git remote add devFork $sshConfigref:$DevUserID/$TargetRepo
+fi
+
+
+######################################################
+#  - if RepoFlag indicates fork repo create
+#    feature branch
+######################################################
+if [ "$RepoFlag" == "fr" ]; then
+  echo "Change branch to $Basis for basis on origin remote ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+  git checkout $Basis
+  echo "Create feature branch based on $Basis branch named:" >> ~/$TargetDir/log/.ForkedWA.log
+  echo " $fbranchname" >> ~/$TargetDir/log/.ForkedWA.log
+  git checkout -b $fbranchname
+fi
+
+######################################################
+#  - Change directory to deploy
+#  - move .ForkedWA.log
+#  - remove ~/$TargetDir/log directory
+######################################################
+cd deploy
+echo "Change directory to deploy ..." 2>&1 >> ~/$TargetDir/log/.ForkedWA.log
+mv ~/$TargetDir/log/.ForkedWA.log .
+########################################
+# Note previous mv will put the
+# .ForkedWA.log in current branch
+# if deploy does not exist.
+########################################
+rm -fr ~/$TargetDir/log
+
+if [ "$RepoFlag" != "dl" ]; then
+  echo "Create main git remote pointed to the repo forked from ..." 2>&1 >> .ForkedWA.log
+  git remote add $MainRepo $sshConfigref:$TargetOrg/$TargetRepo
+
+  #############################################
+  # Identify $MainRepo remote branches
+  # and establish local repo branches
+  # based on $MainRepo remote branches
+  #############################################
+  ShareBranches=()
+  ShareBranches=($(git ls-remote --heads $MainRepo))
+  for sb in "${ShareBranches[@]}"
+  do
+     if [ ${sb:0:4} == "refs" ]; then
+           sb=${sb:11}
+           BranchesFound+=("$sb")
+           echo "git fetch $MainRepo $sb ..." 2>&1 >> .ForkedWA.log
+           git fetch $MainRepo $sb
+           ################################
+           # remove local origin branch
+           # and replace with $MainRepo
+           # branch.
+           ################################
+           git branch -d $sb 2>&1 >> .ForkedWA.log
+           git checkout -b $sb $MainRepo/$sb 2>&1 >> .ForkedWA.log
+     fi
+  done
+fi
+
+######################################################
+#  - if RepoFlag indicates main repo create
+#    feature branch
+######################################################
+if [ "$RepoFlag" == "mr" ]; then
+  echo "Change branch to $Basis for basis on $MainRepo remote ..." 2>&1 >> .ForkedWA.log
+  git checkout $Basis
+  echo "Create feature branch based on $Basis branch named:" >> .ForkedWA.log
+  echo " $fbranchname" >> .ForkedWA.log
+  git checkout -b $fbranchname
+fi
+
+if [ "$RepoFlag" != "dl" ]; then
+  ##############################################
+  # Checkout to feature branch established from
+  # $Basis branch
+  ##############################################
+  git checkout $fbranchname
+
+  ##############################################
+  # Set upstream branch on origin (forked)
+  # remote
+  ##############################################
+  git push --set-upstream origin $fbranchname 2>&1 >> .ForkedWA.log
+fi
+
+################################################################################
+echo "Report: Workarea git remotes ..." 2>&1 >> .ForkedWA.log
+git remote -v >> .ForkedWA.log
+echo "Report: All workarea branches ..." 2>&1 >> .ForkedWA.log
+git branch -a >> .ForkedWA.log
+echo "Report: Local workarea shared branches with last commit message ..." 2>&1 >> .ForkedWA.log
+git branch -v >> .ForkedWA.log
+echo "Report: ~/$TargetDir content listing ..." 2>&1 >> .ForkedWA.log
+ls -l ~/$TargetDir >> .ForkedWA.log
+
+echo "`date +%c` Workstation repo workarea created."
+echo "`date +%c` Workstation repo workarea created." 2>&1 >> .ForkedWA.log
+
+################################################################################
+# Enhance Workarea with Virtual Machine (VM) 
+################################################################################
+echo "`date +%c` Now calling ./vm-system-service.bsh ..." 2>&1 >> .ForkedWA.log
+./vm-system-service.bsh $Basis $Issue "0"
+echo "`date +%c` VM Enhanced workarea created." 2>&1 >> .ForkedWA.log
+echo "execute 'vagrant destroy' and remove workarea before running this script again." >> .ForkedWA.log

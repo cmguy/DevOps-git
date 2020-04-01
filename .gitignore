@@ -1,0 +1,18 @@
+# Packages #
+############
+# It's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+.vagrant
+app/bin/server/html/*
+deploy/package-deploy.bsh
+deploy/vagrantfile
+deploy/bootstrap.sh
+*.log
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip

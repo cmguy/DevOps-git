@@ -1,0 +1,369 @@
+
+:toc: macro
+toc::[left]
+== Git Installation Procedure
+
+=== Prerequisites
+
+* Workstation/laptop with Windows 10 or Mac operating systems
+* Userid with admin access on workstation
+* https://github.com/[Github] userid
+
+The intended audience for this overview is any member of the Github https://github.com/OpenSrcCM[OpenSrcCM] organization. This document sets the stage for all related processes, procedures, and documentation.
+
+[NOTE]
+====
+. This Git installation is recommended by the http://git-scm.com[Git SCM] site for http://git-scm.com/book/en/Getting-Started-Installing-Git[Windows, Mac and linux workstations]. 
+. The preferred and recommended approach for interacting with Github https://github.com/OpenSrcCM[OpenSrcCM] organization from workstations is openSSH.
+. The mac environments have a native ssh client.
+. For non-windows systems, follow the Git installation instructions for the appropriate operating system. The remainder of this document can be used for any unix or linux environment.
+. For release notes, reference file:///C:/Program%20Files/Git/ReleaseNotes.html. You'll need to cut and paste this link into your browser address window after you complete the git installation. It is a link to your workstation.
+====
+
+=== Installing Git
+
+.  go to link http://git-scm.com/[git-scm]. You will see a section on this page specific to your workstation:
+
+
+* For mac install:
+** You may need to hold down the control key when clicking on the pkg script.
+** Run git command line in the native xterm under "Other" apps.
+
+* For Windows install:
+** All defaults with following considerations:
+*** The Vim editor is the default editor. Nano, Notepad++, and VisualStudioCode are other options.
+*** "Use Git and optional Unix tools from the Windows Command Prompt" is recommended
+*** "Use the OpenSSL library"
+*** "Checkout Windows-style, commit Unix-style line endings" is recommended
+*** "Use MinTTY (the default terminal of MSYS2)" is recommended
+*** Following is recommended:
+**** "Enable file system caching"
+**** "Enable Git Credential Manager"
+*** Following is *NOT* recommended on windows workstations:
+**** "Enable symbolic links"
+
+== Upgrade Git
+
+follow the same steps for installating Git. It is designed to install over an existing installation. Note the expected version release change after you are done.
+
+=== Initial git Configurations
+
+After you have installed Git successfully, you have full Git functionality on your workstation.
+
+[green]#Be sure to use the Git Bash session you just installed for the following sections.#
+
+Try the following commands in your Git Bash window:
+
+Run '**git help git**' to display the help index in a browser window.
+Run '**git help <command>**' to display help for specific commands in a browser window.
+
+.In order to interface with the Github https://github.com/OpenSrcCM[OpenSrcCM] organization, the following needs to be performed:
+* Identify or Set $HOME variable on your Workstation.
+* Build and Configure SSH key Usage
+* Identify yourself in Git:
+** Name
+** email
+** Setup your default editor
+** Setup the diff tool you will use
+* Add SSH Aliases
+* Verify Git remote "origin"
+
+[NOTE]
+====
+The above bullets are covered in http://git-scm.com/book/en/Getting-Started-First-Time-Git-Setup[First-Time Git setup]. You may also find the GitHub Help page https://help.github.com/articles/set-up-git/[Set Up Git] useful.
+====
+
+The following sections cover required and recommended configurations.
+
+=== Identify Yourself in Git
+
+.Enter your first and last name:
+* $ git config --global user.name "Andy Wallace"
+
+.Enter your email address:
+* $ git config --global user.email your-email@emailhost.com
+
+.Setup your editor:
+* $ git config --global core.editor vim
+
+.Setup you diff tool:
+* $ git config --global merge.tool vimdiff
+
+.You can run the following command to see all of your Git settings:
+* $ git config --list
+
+[TIP]
+====
+.Verify the following values have been configured:
+. user.name
+. user.email
+. core.editor
+. merge.tool
+====
+
+For windows, verify your git workarea(s) on your windows workstation are on the C Drive in your home directory.
+
+[source asciidoc]
+----
+$ (current directory)
+$ cd ~/
+$ andy@Office-PC MING@64 ~
+$ pwd
+/c/Users/andy
+$
+----
+
+=== Identify the $HOME variable on Your Workstation
+
+.Mac instructions:
+. $HOME should be defined already
+
+.Windows 10 specific instructions:
+. Right Click Windows pane (lower right) and select "System"
+. Select *Advanced system settings*
+. Click on the *Environment Variables...*
+. Verify there is a *HOME* variable in the *System variables* list. This variable is referenced by SSH when supporting remote functionality.
+.. Should be set to C:\Users\[your workstation ID].
+.. Create (New button) or adjust (edit button) the *HOME* system variable accordingly.
+
+[NOTE]
+====
+NOTES:
+
+Consider the content of a https://www.quora.com/What-is-bash_profile-and-what-is-its-use[.bash_profile] file in your ~/ directory of your workstation.
+
+.The following entries are recommended in a ~/.bash_profile for both Win and Mac workstations:
+. source /etc/profile
+. export PATH=$PATH:$HOME/bin
+
+====
+
+=== Build and Configure SSH key Usage
+
+.Execute the following in your new Git Bash window:
+
+[source,asciidoc]
+----
+$ ls -la ~/ | grep .ssh
+----
+
+.If your do not have a ~/.ssh directory, create it:
+[source,asciidoc]
+----
+$ mkdir c:\Users\andy\.ssh (Substitute your userid for andy)
+----
+
+[WARNING]
+====
+.For Windows Desktop:
+. Verify the "Read-only" is selected on the General tab for .ssh properties via File Explorer
+
+====
+
+[NOTE]
+====
+For both Win and Mac workstations the "~/" utilizes the workstation system *HOME* variable for your NTLogon.
+====
+
+.Generate ssh key pair on your Win or Mac workstation in the .ssh directory using your NTLogon:
+[source,asciidoc]
+----
+$ cd ~/.ssh  (c:\Users\awalla5075k\.ssh)
+$ ssh-keygen -t rsa -f [Your userid] (userid is all lower-case, no mixed case.)
+----
+
+[NOTE]
+====
+NOTES:
+
+. It you enter a pass phrase, you'll need to generate a new key to change it
+. If your workstation is stolen, a pass phrase will buy you time to change your ssh key.
+====
+
+=== At this point if your workstation is a Mac, execute the following:
+[source,asciidoc]
+----
+$ chmod -R 740 ~/.ssh
+$ chmod 600 ~/.ssh/*
+----
+
+.The following two files will be generated in the ~/.ssh directory:
+* *[Your userid]* -  Your *[red]#private#* key file
+* *[Your userid].pub* -  Your *[green]#public#* key file
+
+[WARNING]
+====
+*Never expose your private key in an email or attachment. It needs to remain with your workstation*
+====
+
+[IMPORTANT]
+====
+Your interaction with the Github remote repos is more secure using your ssh key.
+====
+
+.Setup your ssh Key on GitHub
+. Logon to https://github.com/[Github] with your Github userid
+. On upper-right of window select pulldown for _**Your Profile**_
+. Select Settings
+. Under _**Personal settings**_ select _**SSH keys and GPG keys**_
+. Click on the _**New SSH key**_ button and follow instructions..
+
+
+.Verify your git workarea(s) on your windows workstation are on the C Drive.
+[source,asciidoc]
+----
+$ andy@DESKTOP-PSoffice MINGW64 ~
+$ cd ~/ (or cd $HOME)
+$ andy@DESKTOP-PSoffice MINGW64 ~
+$ pwd
+/c/Users/andy
+$
+----
+
+=== Add SSH Aliases
+
+To reduce typing and minimize ssh key issues, the following is done to provide ssh aliases for Github system interaction. Add a config file under the \~/.ssh on your workstation as follows.
+
+Edit (or create) ~/.ssh/config and add the following lines adjusted for your [blue]#NTLogon#:
+
+$ vim ~/.ssh/config
+
+[source,text]
+----
+
+################################################################
+################################################################
+### GitHub SSH Client Config file                            ###
+###                                                          ###
+### This code block used for Github Access.                  ###
+###                                                          ###
+### Place this code block in file ~/.ssh/config on your      ###
+### workstation. If ~/.ssh/config already exists, add        ###
+### this code block to file ~/.ssh/config.                   ###
+###                                                          ###
+### DISCLAIMER:                                              ###
+###    This code block not designed to work with wildcard    ###
+###    definition for Host (Host *) in the ~/.ssh/config     ###
+###    file.                                                 ###
+###                                                          ###
+### github is the common alias for the github Distributed    ###
+### Version Management System (DVMS). It's a good choice     ###
+### for Host.                                                ###
+###                                                          ###
+### Syntax format                                            ###
+###                                                          ###
+### Host [ssh alias names]                                   ###
+###        User [host user name]                             ###
+###        Hostname [host dns]                               ###
+###        Port 22                                           ###
+###        IdentityFile ~/.ssh/[Your NTLogon]                ###
+################################################################
+#                                                            ###
+ Host github
+         User git
+         Hostname github.com
+         Port 22
+         IdentityFile ~/.ssh/cmguy
+#                                                            ###
+#   Substitute your github userid for "cmguy"                ###
+#                                                            ###
+################################################################
+
+----
+
+This file allows you to enter commands like this:
+$ git clone github:OpenSrcCM/CM-System-Site
+Rather than this:
+$ git clone ssh://git@github.com/OpenSrcCM/CM-System-Site
+
+*You should now have files similar to the following in your ~/.ssh directory:*
+
+[source,asciidoc]
+----
+andy@DESKTOP-PSoffice MINGW64 ~/.ssh
+$ ls -l
+total 20
+-rw-r--r-- 1 andy 197609 3389 Oct 12 10:24 cmguy
+-rw-r--r-- 1 andy 197609  746 Oct 12 10:24 cmguy.pub
+-rw-r--r-- 1 andy 197609 2336 Apr  1 08:40 config
+-rw-r--r-- 1 andy 197609 2773 Mar 31 16:57 known_hosts
+-rw-r--r-- 1 andy 197609 1882 Oct 12 10:22 README.txt
+
+andy@DESKTOP-PSoffice MINGW64 ~/.ssh
+----
+
+[TIP]
+====
+ - Be sure to read all comments whenever you enter git commands. They usually contain some indication of what you need to enter next.
+ - The remainder of this document assumes you are using the git bash window system acquired in the _Installing Git_ section above.
+====
+
+do the following on your workstation in your new Git Bash Session:
+
+[source asciidoc]
+----
+andy@DESKTOP-PSoffice MINGW64 ~
+$ mkdir repo-workarea
+
+andy@DESKTOP-PSoffice MINGW64 ~
+$ cd repo-workarea
+
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea
+$
+----
+
+[source asciidoc]
+----
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea
+$ git clone github:OpenSrcCM/CM-Plan-Site
+Cloning into 'CM-Plan-Site'...
+remote: Enumerating objects: 24, done.
+remote: Counting objects: 100% (24/24), done.
+remote: Compressing objects: 100% (17/17), done.
+remote: Total 1292 (delta 8), reused 19 (delta 7), pack-reused 1268
+Receiving objects: 100% (1292/1292), 13.91 MiB | 4.08 MiB/s, done.
+Resolving deltas: 100% (673/673), done.
+
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea
+$
+----
+
+Now you have established a git repo local on your workstation from the Github https://github.com/OpenSrcCM[OpenSrcCM] organization. You can verify the git remote origin in the local copy on your workstation.
+
+The git remote `origin` is setup by the clone command for communication between your workstation repo and the Github https://github.com/OpenSrcCM[OpenSrcCM] organization. Reference http://gitref.org/remotes/#remote[git remote] for more details.
+
+[source asciidoc]
+----
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea
+$ cd CM-Plan-Site/
+
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea/CM-Plan-Site (master)
+$ git remote -v show origin
+* remote origin
+  Fetch URL: github:OpenSrcCM/CM-Plan-Site
+  Push  URL: github:OpenSrcCM/CM-Plan-Site
+  HEAD branch: master
+  Remote branches:
+    containerize  tracked
+    develop       tracked
+    develop_Test1 tracked
+    initial       tracked
+    master        tracked
+    mongo         tracked
+  Local branch configured for 'git pull':
+    master merges with remote master
+  Local ref configured for 'git push':
+    master pushes to master (up to date)
+
+andy@DESKTOP-PSoffice MINGW64 ~/repo-workarea/CM-Plan-Site (master)
+$
+----
+
+If you are unable to mimic the above Git bash sessions on your workstation, review the `Add SSH Aliases` section of this document.
+
+== Git Introduction
+
+If you are new to Git, refer to the following links:
+
+* https://git-scm.com/doc
+* https://www.youtube.com/user/github/videos
