@@ -12,7 +12,7 @@ Together, DevOps teams focus on continuous changes for automation, security, and
 
 When developers are focused on operations, they are promoting stability in the Production release environment.
 
-This process is focused on https://www.webopedia.com/TERM/D/devops_development_operations.html[DevOps]  utilizing the https://gist.github.com/Chaser324/ce0505fbed06b947d962[GitFork Workflow]. The PDX GHE repositories are configured to promote this workflow using GHE default configurations.
+This process is focused on https://www.webopedia.com/TERM/D/devops_development_operations.html[DevOps]  utilizing the https://gist.github.com/Chaser324/ce0505fbed06b947d962[GitFork Workflow]. The Github https://github.com/OpenSrcCM[OpenSrcCM] organization repositories are configured to promote this workflow.
 
 [IMPORTANT]
 ====
@@ -97,7 +97,7 @@ image::images/devops-process.png[]
 . *Make changes*
 .. All changes are accompanied by _**development of**_ and _**exercising all known testing**_
 .. Prior to push of any feature branch with changes to origin repo:
-... All shared branches from the *main GHE repository* are:
+... All shared branches from the *main organization repository* are:
 .... pulled to local repo - _**(includes master, develop, and all current release branches)**_
 .... merged with feature branch containing new changes
 ..... This can be _**merged to**_ or _**merged from**_ depending on current deployment circumstances
@@ -150,7 +150,7 @@ Developers are free and encouraged to expand and improve CI/CD automation. This 
 ** less stale
 ** Up to date
 ** More secure
-* GHE repos used by automated *_Continuous Integration_* are configured to promote code reviews and clean development baseline starting points. These are the repositories developers fork and clone from to create local workstation repository work areas.
+* Github repos used by automated *_Continuous Integration_* are configured to promote code reviews and clean development baseline starting points. These are the repositories developers fork and clone from to create local workstation repository work areas.
 * Developer local repos can utilize CI and CD together to promote to a developer controlled environment. These type of snapshot pipelines are limited to 5 versions in the *_Trusted Repository_*.
 ====
 
